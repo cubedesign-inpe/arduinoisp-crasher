@@ -39,6 +39,8 @@
 #include "Arduino.h"
 #undef SERIAL
 
+#include <SoftwareSerial.h>
+
 
 #define PROG_FLICKER true
 
@@ -136,10 +138,14 @@
 #define SERIAL Serial
 #endif
 
+#define PIN_TX  3
+#define PIN_RX  2
+
+SoftwareSerial Bridge(PIN_RX, PIN_TX); // Rx Tx
 
 // Configure the baud rate:
 
-#define BAUDRATE	38400
+#define BAUDRATE	19200
 // #define BAUDRATE	115200
 // #define BAUDRATE	1000000
 
@@ -218,6 +224,7 @@ static BitBangedSPI SPI;
 
 void setup() {
   SERIAL.begin(BAUDRATE);
+  Bridge.begin(38400);
 
   pinMode(LED_PMODE, OUTPUT);
   pulse(LED_PMODE, 2);
@@ -225,10 +232,7 @@ void setup() {
   pulse(LED_ERR, 2);
   pinMode(LED_HB, OUTPUT);
   pulse(LED_HB, 2);
-  delay(300);
-  pulse(LED_PMODE, 2);
-  pulse(LED_ERR, 2);
-  pulse(LED_HB, 2);
+
 }
 
 int error = 0;
@@ -284,6 +288,13 @@ void loop(void) {
     digitalWrite(LED_PMODE, HIGH);
   } else {
     digitalWrite(LED_PMODE, LOW);
+
+    // work on serial bridge
+    //if(Serial.available()) Bridge.write(Serial.read());
+    if(Bridge.available()) {
+      digitalWrite(LED_PMODE, HIGH);
+      Serial.write(Bridge.read());
+    }
   }
   // is there an error?
   if (error) {
@@ -632,8 +643,9 @@ void read_signature() {
 
 ////////////////////////////////////
 ////////////////////////////////////
-void avrisp() {
+uint8_t avrisp() {
   uint8_t ch = getch();
+  uint8_t cd = false;
   switch (ch) {
     case '0': // signon
       error = 0;
